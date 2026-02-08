@@ -1,11 +1,10 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
+	"id": "obsidian-note-protection",
+	"name": "Obsidian Note Protection",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"description": "Password protection and file-level encryption with idle auto-lock for your notes",
+	"author": "",
+	"authorUrl": "",
 	"isDesktopOnly": false
 }
