@@ -4,13 +4,20 @@ export class IdleTimer {
     /**
      * 開始閒置計時器
      */
-    start(filePath: string, idleMinutes: number, callback: () => void): void {
+    start(filePath: string, idleTimeMs: number, callback: () => void): void {
+        console.log('[IdleTimer] Starting timer for:', filePath, 'duration:', idleTimeMs, 'ms');
+
         // 清除舊計時器
         this.reset(filePath);
 
         // 設定新計時器
-        const timer = setTimeout(callback, idleMinutes * 60 * 1000);
+        const timer = setTimeout(() => {
+            console.log('[IdleTimer] Timer callback executing for:', filePath);
+            callback();
+        }, idleTimeMs);
         this.timers.set(filePath, timer);
+
+        console.log('[IdleTimer] Timer set successfully');
     }
 
     /**
@@ -19,6 +26,7 @@ export class IdleTimer {
     reset(filePath: string): void {
         const timer = this.timers.get(filePath);
         if (timer) {
+            console.log('[IdleTimer] Resetting timer for:', filePath);
             clearTimeout(timer);
             this.timers.delete(filePath);
         }
