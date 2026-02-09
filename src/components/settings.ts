@@ -4,9 +4,7 @@ import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 
 export interface PluginSettings {
 	// 密碼設定
-	password: string; // 雜湊密碼（用於驗證）
-	originalPassword: string; // 原始密碼（用於加密）
-	globalPasswordHash: string;
+	password: string; // SHA-256 雜湊密碼（用於驗證）
 	passwordHint: string; // 密碼提示問題
 	animations: boolean;
 	autoLock: string;
@@ -15,8 +13,6 @@ export interface PluginSettings {
 
 export const DEFAULT_SETTINGS: Partial<PluginSettings> = {
 	password: "",
-	originalPassword: "",
-	globalPasswordHash: "",
 	passwordHint: "",
 	animations: true,
 	autoLock: "5",
