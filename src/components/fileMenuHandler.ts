@@ -130,9 +130,10 @@ export class FileMenuHandler {
         const modal = new PasswordInputModal(
             this.app,
             async (inputPassword) => {
-                // 驗證密碼
-                const globalPassword = this.plugin.getGlobalPassword();
-                if (inputPassword === globalPassword) {
+                // 驗證密碼：將輸入的密碼雜湊後與儲存的雜湊比對
+                const inputHash = await this.plugin.hashPassword(inputPassword);
+                const storedHash = this.plugin.settings.password;
+                if (inputHash === storedHash) {
                     // 密碼正確，執行永久解密
                     try {
                         await this.plugin.protectionChecker.removeProtection(file);
