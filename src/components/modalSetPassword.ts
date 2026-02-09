@@ -3,12 +3,14 @@ import main from "../main";
 
 export class ModalSetPassword extends Modal {
 	plugin: main;
+	value_oldpass: string;
 	value_pass: string;
 	value_repass: string;
 	value_hint: string;
 	passwordType: 'obsidian' | 'file';
 	onSubmit?: () => void;
 	messageEl: HTMLElement;
+	isChangingPassword: boolean;
 
 	constructor(
 		app: App,
@@ -19,9 +21,11 @@ export class ModalSetPassword extends Modal {
 		super(app);
 		this.plugin = plugin;
 		this.passwordType = passwordType;
+		this.value_oldpass = "";
 		this.value_pass = "";
 		this.value_repass = "";
 		this.value_hint = "";
+		this.isChangingPassword = !!this.plugin.settings.password;
 		this.onSubmit = onSubmit;
 	}
 
@@ -30,18 +34,35 @@ export class ModalSetPassword extends Modal {
 
 		modalEl.classList.add("password_modal");
 
-		contentEl.createEl("h1", { text: "設定密碼" });
+		contentEl.createEl("h1", { text: this.isChangingPassword ? "變更密碼" : "設定密碼" });
 
 		// 提示訊息區域
 		this.messageEl = contentEl.createDiv({ cls: "password_modal__message" });
 		this.messageEl.style.marginBottom = '1em';
 		this.messageEl.style.color = '#666';
-		this.messageEl.setText("請輸入密碼並確認");
+		this.messageEl.setText(this.isChangingPassword ? "請先輸入舊密碼" : "請輸入密碼並確認");
 
 		const div_input = contentEl.createDiv({ cls: "password_modal__box" });
 
-		// 密碼輸入
-		new Setting(div_input).setName("密碼").setDesc("長度至少 1 個字元").addText((text) => {
+		// 舊密碼輸入（僅變更密碼時顯示）
+		if (this.isChangingPassword) {
+			new Setting(div_input).setName("舊密碼").setDesc("請輸入目前的密碼").addText((text) => {
+				text.inputEl.type = "password";
+				text.inputEl.placeholder = "輸入舊密碼";
+				text.onChange((value) => {
+					this.value_oldpass = value;
+				});
+				text.inputEl.addEventListener("keydown", (e) => {
+					if (e.key === "Enter") {
+						const nextInput = text.inputEl.parentElement?.parentElement?.nextElementSibling?.querySelector('input');
+						if (nextInput) (nextInput as HTMLInputElement).focus();
+					}
+				});
+			});
+		}
+
+		// 新密碼輸入
+		new Setting(div_input).setName(this.isChangingPassword ? "新密碼" : "密碼").setDesc("長度至少 1 個字元").addText((text) => {
 			text.inputEl.type = "password";
 			text.inputEl.placeholder = "輸入密碼";
 			text.onChange((value) => {
@@ -143,8 +164,31 @@ export class ModalSetPassword extends Modal {
 		this.messageEl.setText("✅ 密碼格式正確");
 	}
 
+	async hashPassword(password: string): Promise<string> {
+		const encoder = new TextEncoder();
+		const data = encoder.encode(password);
+		const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+		const hashArray = Array.from(new Uint8Array(hashBuffer));
+		return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+	}
+
 	async comparePassword() {
-		// 驗證密碼
+		// 驗證舊密碼（變更密碼時）
+		if (this.isChangingPassword) {
+			if (!this.value_oldpass) {
+				this.messageEl.style.color = 'red';
+				this.messageEl.setText("❌ 請輸入舊密碼");
+				return;
+			}
+			const oldHash = await this.hashPassword(this.value_oldpass);
+			if (oldHash !== this.plugin.settings.password) {
+				this.messageEl.style.color = 'red';
+				this.messageEl.setText("❌ 舊密碼不正確");
+				return;
+			}
+		}
+
+		// 驗證新密碼
 		if (!this.value_pass || this.value_pass.length < 1) {
 			this.messageEl.style.color = 'red';
 			this.messageEl.setText("❌ 請輸入密碼");
@@ -157,19 +201,11 @@ export class ModalSetPassword extends Modal {
 			return;
 		}
 
-
-
 		// 使用 SHA-256 雜湊密碼
-		const encoder = new TextEncoder();
-		const data = encoder.encode(this.value_pass);
-		const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-		const hashArray = Array.from(new Uint8Array(hashBuffer));
-		const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+		const passwordHash = await this.hashPassword(this.value_pass);
 
-		// 設定密碼（儲存原始密碼和雜湊密碼）
-		this.plugin.settings.password = passwordHash; // 雜湊密碼（用於驗證）
-		this.plugin.settings.originalPassword = this.value_pass; // 原始密碼
-		this.plugin.settings.globalPasswordHash = passwordHash;
+		// 設定密碼（只儲存雜湊密碼）
+		this.plugin.settings.password = passwordHash;
 
 		// 儲存密碼提示問題（如果有）
 		if (this.value_hint) {
