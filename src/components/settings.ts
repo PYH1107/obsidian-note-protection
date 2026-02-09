@@ -33,9 +33,9 @@ export class SettingsTab extends PluginSettingTab {
 		containerEl.empty();
 
 		// ========== 1. 密碼設定 ==========
-		this.containerEl.createEl("h2", {
-			text: "🔐 密碼設定",
-		});
+		new Setting(containerEl)
+			.setName("🔐 密碼設定")
+			.setHeading();
 
 		// 設定/變更密碼按鈕
 		new Setting(containerEl)
@@ -48,12 +48,12 @@ export class SettingsTab extends PluginSettingTab {
 			.addButton((button) =>
 				button
 					.setButtonText(this.plugin.settings.password ? "變更密碼" : "設定密碼")
-					.onClick(async () => {
+					.onClick(() => {
 						const modal = new ModalSetPassword(
 							this.app,
 							this.plugin,
 							'obsidian', // passwordType
-							async () => {
+							() => {
 								new Notice("✅ 密碼已設定");
 								this.display();
 							}
@@ -63,9 +63,9 @@ export class SettingsTab extends PluginSettingTab {
 			);
 
 		// ========== 2. 進階設定 ==========
-		this.containerEl.createEl("h2", {
-			text: "⚙️ 進階設定",
-		});
+		new Setting(containerEl)
+			.setName("⚙️ 進階設定")
+			.setHeading();
 
 		new Setting(containerEl)
 			.setName("閒置自動鎖定時間（分鐘）")
@@ -84,9 +84,9 @@ export class SettingsTab extends PluginSettingTab {
 			});
 
 		// ========== 3. 檔案級加密設定 ==========
-		this.containerEl.createEl("h2", {
-			text: "📄 檔案級加密設定",
-		});
+		new Setting(containerEl)
+			.setName("📄 檔案級加密設定")
+			.setHeading();
 
 		new Setting(containerEl)
 			.setName("關閉檔案時自動加密")
