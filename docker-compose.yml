@@ -1,6 +1,6 @@
 services:
   dev:
-    image: node-dev:22              # 用共用 image
+    image: node-dev:22              # 共用 image
     container_name: obsidian-note-protection-dev
     volumes:
       - .:/obsidian-note-protection
