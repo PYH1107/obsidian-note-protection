@@ -25,10 +25,11 @@ export default class PasswordPlugin extends Plugin {
 	// 防止在允許訪問後立即清除訪問權限
 	private justAllowedAccess: Set<string> = new Set();
 
-	async onload() { //the obsidian lifecycle
+	async onload() {
 		await this.loadSettings();
 
-		this.app.workspace.onLayoutReady(async () => { // refactor note1:其實我跟 obsidian 的 plugin 框架和 ts 都沒有很熟，這行跟 onload 的差異？為什麼有了外面的 onload 還需要這個？
+		// onLayoutReady: 等待 Obsidian UI 完全就緒後才初始化（onload 時 workspace 可能還沒準備好）
+		this.app.workspace.onLayoutReady(async () => {
 			// 初始化元件
 			this.protectionChecker = new ProtectionChecker(this.app);
 			this.accessTracker = new AccessTracker(); // session
@@ -38,111 +39,24 @@ export default class PasswordPlugin extends Plugin {
 			// 註冊右鍵選單
 			this.fileMenuHandler.registerFileMenu();
 
-			// 註冊檔案開啟事件 - 檢查保護狀態並要求密碼 
-			// refactor note4:這個這麼長，雖然很多都是在寫 console，但分頁判斷邏輯感覺是一間獨立的事情，是不是應該自己獨立出去一個檔案? main 是不是簡潔一點比較好？
-			// refactor note5: registerEvent 的用法是什麼？他是我命名的變數嗎？還是 obsidian 規範？
-			this.registerEvent( // refactor note2:為什麼要使用 registerEvent？這是一個好的變數名稱嗎？但即使有 comment 我還是看不出來他在做什麼。 this 是在幹嘛？
+			// 監聽檔案開啟事件：處理前一個檔案的鎖定邏輯，並對新開啟的受保護檔案要求密碼
+			this.registerEvent(
 				this.app.workspace.on('file-open', async (file) => {
 					console.debug('[Main] ========== file-open event triggered ==========');
 					console.debug('[Main] Current file:', file?.path || 'null (closing)');
 					console.debug('[Main] Previous file:', this.previousFile?.path || 'null');
 
-					// 處理前一個檔案的閒置計時器
-					if (this.previousFile) {
-						console.debug('[Main] Processing previous file:', this.previousFile.path);
-						console.debug('[Main] Is temporary access?', this.accessTracker.isTemporaryAccess(this.previousFile.path));
-
-						// 只對臨時訪問的檔案處理 --> refactor note7: 承接 note 4，應該是這邊開始獨立出去：if is temporyaccess --> 然後就接這邊的邏輯
-						if (this.accessTracker.isTemporaryAccess(this.previousFile.path)) {
-							// 防止清除正在開啟的檔案的訪問權限
-							const isSameFile = file && file.path === this.previousFile.path;
-							console.debug('[Main] Is same file?', isSameFile);
-
-							// 檢查是否剛剛允許訪問
-							const wasJustAllowed = this.justAllowedAccess.has(this.previousFile.path);
-							console.debug('[Main] Was just allowed?', wasJustAllowed);
-
-							// 判斷分頁是否被關閉：file 為 null 或 previousFile 不在任何已開啟的分頁中
-							const isTabClosing = !file || !this.app.workspace
-								.getLeavesOfType('markdown')
-								.some(leaf => {
-									const view = leaf.view as { file?: TFile };
-									return view.file?.path === this.previousFile!.path;
-								});
-							console.debug('[Main] Tab closing:', isTabClosing, ', autoEncryptOnClose:', this.settings.autoEncryptOnClose);
-
-							// refactor note6: 這個 if else 的邏輯感覺可以獨立出去一個 function 或者用 switch 會不會更好
-							if (isTabClosing && !isSameFile) {
-								// 分頁關閉：無條件清除訪問狀態，不受 justAllowedAccess 影響
-								this.accessTracker.clearAccess(this.previousFile.path);
-								this.idleTimer.stop(this.previousFile.path);
-								console.debug('[Main] ✅ Access cleared (tab closed) for:', this.previousFile.path);
-							} else if (this.settings.autoEncryptOnClose && !isSameFile && !wasJustAllowed) {
-								// autoEncryptOnClose 開啟時切換檔案：清除訪問狀態
-								this.accessTracker.clearAccess(this.previousFile.path);
-								this.idleTimer.stop(this.previousFile.path); //這邊跟上一個 if 重複了欸？
-								console.debug('[Main] ✅ Access cleared (autoEncrypt) for:', this.previousFile.path);
-							} else {
-								// 切換分頁：只停止計時器，保持訪問狀態
-								this.idleTimer.stop(this.previousFile.path);
-								if (wasJustAllowed) {
-									console.debug('[Main] 🛡️  Protected from clearing (just allowed):', this.previousFile.path);
-								} else {
-									console.debug('[Main] ⏸️  Switched away from (keeping access):', this.previousFile.path);
-								}
-							}
-
-							// 清除 justAllowedAccess 標記
-							this.justAllowedAccess.delete(this.previousFile.path);
-						} else {
-							console.debug('[Main] ⚠️  Previous file is NOT temporary access, skipping protection logic');
-						}
-					}
-
-					// 更新前一個檔案
+					this.handleLeavingPreviousFile(file);
 					this.previousFile = file;
 
-					// 如果沒有檔案，返回
-					if (!file) {
-						console.debug('[Main] No file to open, exiting');
-						return;
-					}
+					if (!file) return;
 
-					console.debug('[Main] file-open event:', file.path);
-
-					// 檢查檔案是否受保護
-					// refactor note8: 為什麼在這裡檢查檔案是否受保護？這是對每一個新開啟的檔案都檢查嗎？那我們不是應該從最一開始先用 protectionChecker 去檢查 > 接著 檢查 temporary access（因為只有有 encrypt property 的才會有 temporary access） > 再接下來才是是否需要驗證 > 驗證
-					const isProtected = await this.protectionChecker.isProtected(file);
-					console.debug('[Main] isProtected result:', isProtected);
-					if (!isProtected) return;
-
-					// 檢查是否已經驗證過密碼
-					const alreadyAccessed = this.accessTracker.isAccessedThisSession(file.path);
-					const isTemp = this.accessTracker.isTemporaryAccess(file.path);
-					console.debug('[Main] alreadyAccessed:', alreadyAccessed, 'isTemporaryAccess:', isTemp);
-					console.debug('[Main] All accessed files:', this.accessTracker.getAccessedFiles());
-
-					if (alreadyAccessed) {
-						// 已驗證，允許訪問
-						console.debug('[Main] File already accessed, allowing access');
-						// 標記為剛剛允許訪問,防止立即被清除
-						this.justAllowedAccess.add(file.path);
-						// 切換回來時，重新啟動閒置計時器
-						if (this.accessTracker.isTemporaryAccess(file.path)) {
-							this.startIdleTimer(file);
-						}
-						return;
-					}
-
-					// 需要驗證密碼
-					console.debug('[Main] Requesting password for:', file.path);
-					await this.requestPasswordForFile(file);
+					await this.handleOpeningProtectedFile(file);
 				})
 			);
 
-			// refactor note9: 這個 layout-change 的監聽器是什麼時候會觸發？
-			// refactor note10: 這個不能併到 file-open 的監聽器嗎？
 			// 監聽 layout 變化，偵測分頁被關閉時清除存取權限
+			// （不能併入 file-open：關閉非 active 的分頁時 file-open 不會觸發，需要 layout-change 兜底）
 			this.registerEvent(
 				this.app.workspace.on('layout-change', () => {
 					const openPaths = new Set(
@@ -183,9 +97,68 @@ export default class PasswordPlugin extends Plugin {
 	}
 
 	/**
+	 * 處理離開前一個檔案時的鎖定邏輯
+	 */
+	private handleLeavingPreviousFile(currentFile: TFile | null): void {
+		if (!this.previousFile) return;
+
+		const prevPath = this.previousFile.path;
+
+		if (!this.accessTracker.isTemporaryAccess(prevPath)) {
+			console.debug('[Main] Previous file is NOT temporary access, skipping');
+			return;
+		}
+
+		const isSameFile = currentFile?.path === prevPath;
+		const wasJustAllowed = this.justAllowedAccess.has(prevPath);
+		const isTabClosing = !currentFile || !this.app.workspace
+			.getLeavesOfType('markdown')
+			.some(leaf => {
+				const view = leaf.view as { file?: TFile };
+				return view.file?.path === prevPath;
+			});
+
+		// 三種情境都要停止計時器
+		this.idleTimer.stop(prevPath);
+
+		// 判斷是否需要清除存取權限
+		const shouldClearAccess =
+			(isTabClosing && !isSameFile) ||
+			(this.settings.autoEncryptOnClose && !isSameFile && !wasJustAllowed);
+
+		if (shouldClearAccess) {
+			this.accessTracker.clearAccess(prevPath);
+			console.debug('[Main] ✅ Access cleared for:', prevPath);
+		} else {
+			console.debug('[Main] ⏸️ Keeping access for:', prevPath);
+		}
+
+		this.justAllowedAccess.delete(prevPath);
+	}
+
+	/**
+	 * 處理開啟受保護檔案時的驗證邏輯
+	 */
+	private async handleOpeningProtectedFile(file: TFile): Promise<void> {
+		const isProtected = await this.protectionChecker.isProtected(file);
+		if (!isProtected) return;
+
+		const alreadyAccessed = this.accessTracker.isAccessedThisSession(file.path);
+
+		if (alreadyAccessed) {
+			this.justAllowedAccess.add(file.path);
+			if (this.accessTracker.isTemporaryAccess(file.path)) {
+				this.startIdleTimer(file);
+			}
+			return;
+		}
+
+		await this.requestPasswordForFile(file);
+	}
+
+	/**
 	 * 要求輸入密碼以訪問受保護文件
 	 */
-	// refactor note11: 有沒有密碼的檢查是應該獨立的嗎？
 	async requestPasswordForFile(file: TFile): Promise<void> {
 		// 檢查是否已設定密碼
 		if (!this.settings.password) {
