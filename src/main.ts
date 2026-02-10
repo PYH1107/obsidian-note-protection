@@ -9,6 +9,7 @@ import { FileMenuHandler } from "./components/fileMenuHandler";
 import { IdleTimer } from "./components/idleTimer";
 import { PasswordInputModal } from "./components/passwordInputModal";
 import { ProtectionChecker } from "./components/protectionChecker";
+import { hashPassword } from "./components/crypto";
 
 export default class PasswordPlugin extends Plugin {
 	settings: PluginSettings;
@@ -174,7 +175,7 @@ export default class PasswordPlugin extends Plugin {
 			this.app,
 			async (inputPassword) => {
 				// 驗證密碼：將輸入的密碼雜湊後與儲存的雜湊比對
-				const inputHash = await this.hashPassword(inputPassword);
+				const inputHash = await hashPassword(inputPassword);
 				const storedHash = this.settings.password;
 				if (inputHash === storedHash) {
 					// 密碼正確，標記為已訪問
@@ -229,17 +230,6 @@ export default class PasswordPlugin extends Plugin {
 				this.app.workspace.getLeaf().detach();
 			}
 		});
-	}
-
-	/**
-	 * 將密碼雜湊為 SHA-256
-	 */
-	async hashPassword(password: string): Promise<string> {
-		const encoder = new TextEncoder();
-		const data = encoder.encode(password);
-		const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-		const hashArray = Array.from(new Uint8Array(hashBuffer));
-		return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 	}
 
 	async loadSettings() {
