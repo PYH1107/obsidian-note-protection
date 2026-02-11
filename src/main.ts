@@ -10,6 +10,7 @@ import { IdleTimer } from "./components/idleTimer";
 import { PasswordInputModal } from "./components/passwordInputModal";
 import { ProtectionChecker } from "./components/protectionChecker";
 import { hashPassword } from "./components/crypto";
+import { t } from "./i18n";
 
 export default class PasswordPlugin extends Plugin {
 	settings: PluginSettings;
@@ -154,7 +155,7 @@ export default class PasswordPlugin extends Plugin {
 	requestPasswordForFile(file: TFile): void {
 		// 檢查是否已設定密碼
 		if (!this.settings.password) {
-			new Notice("請先在設定中設定密碼");
+			new Notice(t("msg_set_password_first"));
 			// 關閉文件
 			this.app.workspace.getLeaf().detach();
 			return;
@@ -170,7 +171,7 @@ export default class PasswordPlugin extends Plugin {
 				if (inputHash === storedHash) {
 					// 密碼正確，標記為已訪問
 					this.accessTracker.markAsTemporaryAccess(file.path);
-					new Notice(`已驗證：${file.name}`);
+					new Notice(t("msg_verified", { name: file.name }));
 
 					// 啟動閒置計時器
 					this.startIdleTimer(file);
@@ -179,14 +180,14 @@ export default class PasswordPlugin extends Plugin {
 					await this.app.workspace.getLeaf().openFile(file);
 				} else {
 					// 密碼錯誤
-					new Notice("密碼錯誤");
+					new Notice(t("msg_wrong_password"));
 					// 關閉文件
 					this.app.workspace.getLeaf().detach();
 				}
 			},
 			() => {
 				// 取消時關閉文件
-				new Notice("已取消");
+				new Notice(t("msg_cancelled"));
 				this.app.workspace.getLeaf().detach();
 			}
 		);
@@ -203,7 +204,7 @@ export default class PasswordPlugin extends Plugin {
 		this.idleTimer.start(file.path, idleTimeMs, () => {
 			// 閒置時間到，清除訪問狀態
 			this.accessTracker.clearAccess(file.path);
-			new Notice(`${file.name} 已鎖定，需要重新驗證密碼`);
+			new Notice(t("msg_file_locked", { name: file.name }));
 
 			// 如果當前正在查看這個文件，關閉它
 			const activeFile = this.app.workspace.getActiveFile();
