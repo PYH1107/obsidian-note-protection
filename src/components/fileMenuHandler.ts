@@ -37,8 +37,8 @@ export class FileMenuHandler {
             menu.addItem((item) => {
                 item.setTitle("永久解密此檔案")
                     .setIcon("unlock")
-                    .onClick(async () => {
-                        await this.handleRemoveProtection(file);
+                    .onClick(() => {
+                        this.handleRemoveProtection(file);
                     });
             });
         } else {
@@ -83,7 +83,7 @@ export class FileMenuHandler {
     /**
      * 處理移除保護
      */
-    private async handleRemoveProtection(file: TFile): Promise<void> {
+    private handleRemoveProtection(file: TFile): void {
         // 要求輸入密碼確認
         const modal = new PasswordInputModal(
             this.app,
