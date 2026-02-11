@@ -1,6 +1,7 @@
 import main from "../main";
 import { ModalSetPassword } from "./modalSetPassword";
 import { App, Notice, PluginSettingTab, Setting } from "obsidian";
+import { t } from "../i18n";
 
 export interface PluginSettings {
 	// 密碼設定
@@ -34,27 +35,27 @@ export class SettingsTab extends PluginSettingTab {
 
 		// ========== 1. 密碼設定 ==========
 		new Setting(containerEl)
-			.setName("🔐 密碼設定")
+			.setName(t("settings_password_heading"))
 			.setHeading();
 
 		// 設定/變更密碼按鈕
 		new Setting(containerEl)
-			.setName("設定密碼")
+			.setName(t("settings_set_password"))
 			.setDesc(
 				this.plugin.settings.password
-					? "✅ 密碼已設定。點擊按鈕可變更密碼。"
-					: "⚠️ 尚未設定密碼。請先設定密碼以使用加密功能。"
+					? t("settings_password_set_desc")
+					: t("settings_password_not_set_desc")
 			)
 			.addButton((button) =>
 				button
-					.setButtonText(this.plugin.settings.password ? "變更密碼" : "設定密碼")
+					.setButtonText(this.plugin.settings.password ? t("settings_change_password") : t("settings_set_password"))
 					.onClick(() => {
 						const modal = new ModalSetPassword(
 							this.app,
 							this.plugin,
 							'obsidian', // passwordType
 							() => {
-								new Notice("✅ 密碼已設定");
+								new Notice(t("msg_password_set"));
 								this.display();
 							}
 						);
@@ -64,14 +65,12 @@ export class SettingsTab extends PluginSettingTab {
 
 		// ========== 2. 進階設定 ==========
 		new Setting(containerEl)
-			.setName("⚙️ 進階設定")
+			.setName(t("settings_advanced_heading"))
 			.setHeading();
 
 		new Setting(containerEl)
-			.setName("閒置自動鎖定時間（分鐘）")
-			.setDesc(
-				"閒置多少分鐘後自動重新加密已解密的檔案（設定為 0 表示停用）"
-			)
+			.setName(t("settings_idle_lock_name"))
+			.setDesc(t("settings_idle_lock_desc"))
 			.addText((text) => {
 				text.setValue(this.plugin.settings.autoLock).onChange(
 					async (value) => {
@@ -85,12 +84,12 @@ export class SettingsTab extends PluginSettingTab {
 
 		// ========== 3. 檔案級加密設定 ==========
 		new Setting(containerEl)
-			.setName("📄 檔案級加密設定")
+			.setName(t("settings_file_encryption_heading"))
 			.setHeading();
 
 		new Setting(containerEl)
-			.setName("關閉檔案時自動加密")
-			.setDesc("切換到其他檔案時自動加密前一個檔案")
+			.setName(t("settings_auto_encrypt_on_close_name"))
+			.setDesc(t("settings_auto_encrypt_on_close_desc"))
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.autoEncryptOnClose)

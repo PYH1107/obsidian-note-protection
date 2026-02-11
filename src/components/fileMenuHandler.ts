@@ -2,6 +2,7 @@ import main from "../main";
 import { App, TFile, Menu, Notice, MarkdownView } from "obsidian";
 import { PasswordInputModal } from "./passwordInputModal";
 import { hashPassword } from "./crypto";
+import { t } from "../i18n";
 
 export class FileMenuHandler {
     app: App;
@@ -35,7 +36,7 @@ export class FileMenuHandler {
 
         if (isProtected) {
             menu.addItem((item) => {
-                item.setTitle("永久解密此檔案")
+                item.setTitle(t("menu_decrypt_file"))
                     .setIcon("unlock")
                     .onClick(() => {
                         this.handleRemoveProtection(file);
@@ -43,7 +44,7 @@ export class FileMenuHandler {
             });
         } else {
             menu.addItem((item) => {
-                item.setTitle("加密此檔案")
+                item.setTitle(t("menu_encrypt_file"))
                     .setIcon("lock")
                     .onClick(async () => {
                         await this.handleMarkProtected(file);
@@ -58,13 +59,13 @@ export class FileMenuHandler {
     private async handleMarkProtected(file: TFile): Promise<void> {
         // 檢查是否已設定密碼
         if (!this.plugin.settings.password) {
-            new Notice("⚠️ 請先在設定中設定密碼");
+            new Notice(t("msg_set_password_first_warning"));
             return;
         }
 
         try {
             await this.plugin.protectionChecker.markAsProtected(file);
-            new Notice(`✅ 已加密：${file.name}`);
+            new Notice(t("msg_encrypted", { name: file.name }));
 
             // 立即關閉檔案，防止未經驗證就查看
             const leaves = this.app.workspace.getLeavesOfType('markdown');
@@ -76,7 +77,7 @@ export class FileMenuHandler {
             }
         } catch (error) {
             console.error('[FileMenuHandler] Error in handleMarkProtected:', error);
-            new Notice(`❌ 加密失敗：${(error as Error).message}`);
+            new Notice(t("msg_encrypt_failed", { message: (error as Error).message }));
         }
     }
 
@@ -98,19 +99,19 @@ export class FileMenuHandler {
                         this.plugin.accessTracker.clearAccess(file.path);
                         this.plugin.idleTimer.stop(file.path);
 
-                        new Notice(`✅ 已解密：${file.name}`);
+                        new Notice(t("msg_decrypted", { name: file.name }));
                     } catch (error) {
                         console.error('[FileMenuHandler] Error in handleRemoveProtection:', error);
-                        new Notice(`❌ 解密失敗：${(error as Error).message}`);
+                        new Notice(t("msg_decrypt_failed", { message: (error as Error).message }));
                     }
                 } else {
                     // 密碼錯誤
-                    new Notice("❌ 密碼錯誤，無法解密");
+                    new Notice(t("msg_wrong_password_decrypt"));
                 }
             },
             () => {
                 // 取消
-                new Notice("已取消解密");
+                new Notice(t("msg_decrypt_cancelled"));
             }
         );
         modal.open();

@@ -1,4 +1,5 @@
 import { App, Modal, Notice, Setting } from "obsidian";
+import { t } from "../i18n";
 
 /**
  * 簡單的密碼輸入模態視窗
@@ -34,13 +35,13 @@ export class PasswordInputModal extends Modal {
             appContainer.addClass('app-container__lock_password');
         }
 
-        contentEl.createEl("h2", { text: "🔒 輸入密碼" });
+        contentEl.createEl("h2", { text: t("modal_enter_password_title") });
 
         new Setting(contentEl)
-            .setName("密碼")
+            .setName(t("modal_password"))
             .addText((text) => {
                 text.inputEl.type = "password";
-                text.inputEl.placeholder = "請輸入密碼";
+                text.inputEl.placeholder = t("modal_password_input_placeholder");
                 text.onChange((value) => {
                     this.password = value;
                 });
@@ -61,14 +62,14 @@ export class PasswordInputModal extends Modal {
         const buttonContainer = contentEl.createDiv({ cls: "modal-button-container" });
 
         // 取消按鈕
-        const cancelButton = buttonContainer.createEl("button", { text: "取消" });
+        const cancelButton = buttonContainer.createEl("button", { text: t("modal_cancel") });
         cancelButton.addEventListener("click", () => {
             this.close();
         });
 
         // 確認按鈕
         const submitButton = buttonContainer.createEl("button", {
-            text: "確認",
+            text: t("modal_confirm"),
             cls: "mod-cta",
         });
         submitButton.addEventListener("click", () => {
@@ -83,7 +84,7 @@ export class PasswordInputModal extends Modal {
         }
 
         if (!this.password) {
-            new Notice("⚠️ 請輸入密碼");
+            new Notice(t("msg_please_enter_password"));
             return;
         }
 
