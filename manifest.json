@@ -1,10 +1,10 @@
 {
-	"id": "obsidian-note-protection",
-	"name": "Obsidian Note Protection",
+	"id": "note-lock",
+	"name": "Note Lock",
 	"version": "1.0.0",
-	"minAppVersion": "0.15.0",
-	"description": "Password protection and file-level encryption with idle auto-lock for your notes",
+	"minAppVersion": "1.11.7",
+	"description": "Password-protect individual notes with per-file idle auto-lock.",
 	"author": "PAN, YUN-HUEI",
-	"authorUrl": "",
+	"authorUrl": "https://github.com/PYH1107",
 	"isDesktopOnly": false
 }
