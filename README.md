@@ -26,6 +26,10 @@ Password-protect individual notes in your Obsidian vault. Unlike folder-level pr
 | Idle auto-lock | Minutes of inactivity before files are re-locked (0 to disable) |
 | Auto-encrypt on close | Re-lock the previous file when switching to another note |
 
+## Supported file types
+
+Currently only **Markdown (`.md`)** files are supported. Canvas, Excalidraw, and other non-markdown file types are not supported because protection status is stored in frontmatter, which is only available in markdown files.
+
 ## How it works
 
 - Protection status is stored in each file's frontmatter (`protected: 'encrypted'`).
