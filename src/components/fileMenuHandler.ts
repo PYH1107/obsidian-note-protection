@@ -1,7 +1,5 @@
 import main from "../main";
 import { App, TFile, Menu, Notice, MarkdownView } from "obsidian";
-import { PasswordInputModal } from "./passwordInputModal";
-import { hashPassword } from "./crypto";
 import { t } from "../i18n";
 
 export class FileMenuHandler {
@@ -82,38 +80,9 @@ export class FileMenuHandler {
     }
 
     /**
-     * 處理移除保護
+     * 處理移除保護（委託 plugin 統一處理）
      */
     private handleRemoveProtection(file: TFile): void {
-        // 要求輸入密碼確認
-        const modal = new PasswordInputModal(
-            this.app,
-            async (inputPassword) => {
-                // 驗證密碼：將輸入的密碼雜湊後與儲存的雜湊比對
-                const inputHash = await hashPassword(inputPassword);
-                const storedHash = this.plugin.settings.password;
-                if (inputHash === storedHash) {
-                    // 密碼正確，執行永久解密
-                    try {
-                        await this.plugin.protectionChecker.removeProtection(file);
-                        this.plugin.accessTracker.clearAccess(file.path);
-                        this.plugin.idleTimer.stop(file.path);
-
-                        new Notice(t("msg_decrypted", { name: file.name }));
-                    } catch (error) {
-                        console.error('[FileMenuHandler] Error in handleRemoveProtection:', error);
-                        new Notice(t("msg_decrypt_failed", { message: (error as Error).message }));
-                    }
-                } else {
-                    // 密碼錯誤
-                    new Notice(t("msg_wrong_password_decrypt"));
-                }
-            },
-            () => {
-                // 取消
-                new Notice(t("msg_decrypt_cancelled"));
-            }
-        );
-        modal.open();
+        this.plugin.requestRemoveProtection(file);
     }
 }

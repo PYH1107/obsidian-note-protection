@@ -1,5 +1,33 @@
 import { App, Modal, Notice, Setting } from "obsidian";
+import { hashPassword } from "./crypto";
 import { t } from "../i18n";
+
+/**
+ * 彈出密碼驗證視窗，內部處理 hash 比對
+ */
+export function showPasswordVerification(
+    app: App,
+    storedHash: string,
+    options: {
+        onSuccess: () => void | Promise<void>;
+        onFailure?: () => void;
+        onCancel?: () => void;
+    }
+): void {
+    const modal = new PasswordInputModal(
+        app,
+        async (inputPassword) => {
+            const inputHash = await hashPassword(inputPassword);
+            if (inputHash === storedHash) {
+                await options.onSuccess();
+            } else {
+                options.onFailure?.();
+            }
+        },
+        options.onCancel
+    );
+    modal.open();
+}
 
 /**
  * 簡單的密碼輸入模態視窗
